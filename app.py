@@ -343,6 +343,55 @@ div[aria-selected="true"] * {
   margin-top: 4px;
 }
 
+
+/* ===== ARION Quick Messenger UI ===== */
+.quick-message-box {
+  background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  padding: 14px 14px;
+  margin: 12px 0;
+}
+.quick-message-title {
+  color: #1e3a8a;
+  font-weight: 950;
+  font-size: 0.98rem;
+  margin-bottom: 5px;
+}
+.quick-message-desc {
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+
+/* ===== Team View Polish ===== */
+section[data-testid="stSidebar"] [data-testid="stForm"] {
+  background: #f8fafc !important;
+  border: 1px solid #dbeafe !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+}
+section[data-testid="stSidebar"] textarea {
+  min-height: 70px !important;
+}
+.team-empty-card {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  padding: 18px 20px;
+  margin: 14px 0;
+}
+.team-empty-title {
+  font-weight: 950;
+  color: #1e3a8a;
+  margin-bottom: 6px;
+}
+.team-empty-desc {
+  color: #334155;
+  line-height: 1.55;
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -573,6 +622,28 @@ def save_table(key: str, df: pd.DataFrame, show_success: bool = True):
         st.success("로컬 CSV에 저장했습니다. Supabase 설정 전에는 팀원들과 자동 공유되지 않습니다.")
     return True
 
+def korean_action_view(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame(columns=["날짜", "프로젝트", "할 일", "목표 결과", "수익 연결", "우선순위", "상태", "예상 시간", "결과", "막힌 이유", "다음 행동"])
+    cols = {
+        "date": "날짜",
+        "project": "프로젝트",
+        "task": "할 일",
+        "goal": "목표 결과",
+        "revenue_link": "수익 연결",
+        "priority": "우선순위",
+        "status": "상태",
+        "estimated_minutes": "예상 시간",
+        "actual_result": "결과",
+        "blocker": "막힌 이유",
+        "next_action": "다음 행동",
+    }
+    view = df.copy()
+    for c in cols:
+        if c not in view.columns:
+            view[c] = ""
+    return view[list(cols.keys())].rename(columns=cols)
+
 # -----------------------------
 # Auth helpers
 # -----------------------------
@@ -653,6 +724,66 @@ def log_ai_feedback(owner: str, owner_email: str, feedback_type: str, input_summ
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }])
     save_table("ai_feedback_logs", pd.concat([logs.drop(columns=["_record_id"], errors="ignore"), row], ignore_index=True), show_success=False)
+
+def find_admin_user_email() -> tuple[str, str]:
+    users_df = load_table("team_users")
+    if users_df.empty:
+        return "", "대표"
+    admins = users_df[
+        (users_df["is_admin"].astype(str).str.lower().isin(["yes", "true", "1"])) |
+        (users_df["role"].astype(str) == "대표")
+    ]
+    if admins.empty:
+        return "", "대표"
+    row = admins.iloc[0]
+    return str(row.get("email", "")), str(row.get("name", "대표"))
+
+def save_quick_message(title: str, message: str, urgency: str, project: str = "공통"):
+    messages_df = load_table("team_messages")
+    admin_email, admin_name = find_admin_user_email()
+    row = pd.DataFrame([{
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "sender": user.get("name", ""),
+        "sender_email": user.get("email", ""),
+        "message_type": "대표에게질문",
+        "project": project or "공통",
+        "recipient": admin_name,
+        "recipient_email": admin_email,
+        "urgency": urgency,
+        "title": title,
+        "message": message,
+        "status": "open",
+        "ai_summary": "",
+        "reply_to": "",
+        "memo": "sidebar_quick_message",
+    }])
+    return save_table("team_messages", pd.concat([messages_df.drop(columns=["_record_id"], errors="ignore"), row], ignore_index=True), show_success=False)
+
+def render_sidebar_quick_messenger():
+    st.markdown(
+        """
+<div class="quick-message-box">
+  <div class="quick-message-title">팀 메신저 빠른 요청</div>
+  <div class="quick-message-desc">
+    막힌 일, 대표 결정, 질문을 바로 남기세요. 메시지는 팀 메신저에 저장됩니다.
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    with st.form("sidebar_quick_messenger_form"):
+        quick_project = st.text_input("프로젝트", placeholder="예: Seller OS", key="quick_msg_project")
+        quick_title = st.text_input("제목", placeholder="예: 상품 후보 승인 요청", key="quick_msg_title")
+        quick_msg = st.text_area("메시지", placeholder="대표에게 확인받을 내용을 적어주세요.", key="quick_msg_body", height=100)
+        quick_urgency = st.selectbox("긴급도", ["medium", "high", "low"], key="quick_msg_urgency")
+        quick_submit = st.form_submit_button("팀 메신저로 보내기")
+    if quick_submit:
+        if not quick_title and not quick_msg:
+            st.error("제목 또는 메시지를 입력하세요.")
+        else:
+            ok = save_quick_message(quick_title, quick_msg, quick_urgency, quick_project)
+            if ok:
+                st.success("팀 메신저에 보냈습니다.")
 
 # -----------------------------
 # Seed data
@@ -827,7 +958,10 @@ with st.sidebar:
     st.caption("팀 공용 운영 화면")
     if not is_admin():
         st.markdown("#### 빠른 이동")
-        st.info("질문이나 요청은 아래쪽 ‘팀 메신저’ 탭에 남기세요.")
+        render_sidebar_quick_messenger()
+    else:
+        st.markdown("#### 빠른 메신저")
+        render_sidebar_quick_messenger()
     if ai_available():
         st.success("NVIDIA AI 연결됨")
     else:
@@ -904,7 +1038,7 @@ with tab["내 홈"]:
 
     if not my_today.empty:
         st.subheader("내 오늘 할 일")
-        st.dataframe(my_today[["project","task","goal","priority","status","next_action"]], use_container_width=True)
+        st.dataframe(korean_action_view(my_today), use_container_width=True)
     else:
         st.info("아직 오늘 배정된 할 일이 없습니다. '내 오늘 할 일' 탭에서 직접 추가하거나 대표에게 요청하세요.")
 
@@ -966,16 +1100,29 @@ with tab["내 오늘 할 일"]:
         (actions["owner_email"].astype(str).str.lower() == my_email)
     ] if not actions.empty else pd.DataFrame(columns=SCHEMAS["team_daily_actions"])
 
-    edited = st.data_editor(view, use_container_width=True, num_rows="dynamic", key="editor_my_tasks_view")
-    if st.button("내 할 일 저장", key="btn_save_my_tasks"):
-        # replace only my rows
-        base = actions[
-            ~(
-                (actions["owner"].astype(str) == my_name) |
-                (actions["owner_email"].astype(str).str.lower() == my_email)
-            )
-        ] if not actions.empty else pd.DataFrame(columns=SCHEMAS["team_daily_actions"])
-        save_table("team_daily_actions", pd.concat([base.drop(columns=["_record_id"], errors="ignore"), edited.drop(columns=["_record_id"], errors="ignore")], ignore_index=True))
+    if view.empty:
+        st.markdown(
+            """
+<div class="team-empty-card">
+  <div class="team-empty-title">아직 배정된 할 일이 없습니다.</div>
+  <div class="team-empty-desc">아래에서 오늘 할 일을 직접 추가하거나, 왼쪽 사이드바의 팀 메신저로 대표에게 업무 배정을 요청하세요.</div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.dataframe(korean_action_view(view), use_container_width=True)
+        with st.expander("고급 편집 열기"):
+            edited = st.data_editor(view, use_container_width=True, num_rows="dynamic", key="editor_my_tasks_view")
+            if st.button("내 할 일 저장", key="btn_save_my_tasks"):
+                # replace only my rows
+                base = actions[
+                    ~(
+                        (actions["owner"].astype(str) == my_name) |
+                        (actions["owner_email"].astype(str).str.lower() == my_email)
+                    )
+                ] if not actions.empty else pd.DataFrame(columns=SCHEMAS["team_daily_actions"])
+                save_table("team_daily_actions", pd.concat([base.drop(columns=["_record_id"], errors="ignore"), edited.drop(columns=["_record_id"], errors="ignore")], ignore_index=True))
 
     st.markdown("### 내 할 일 추가")
     with st.form("add_my_action"):

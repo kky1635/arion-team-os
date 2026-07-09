@@ -174,6 +174,81 @@ div[data-testid="stAlert"] { border-radius: 18px !important; border: 1px solid v
 .low { background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; }
 
 section[data-testid="stSidebar"] { background: #ffffff !important; }
+
+/* ===== ARION Selectbox / Dropdown White UI Fix ===== */
+div[data-baseweb="select"] > div {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 14px !important;
+}
+
+div[data-baseweb="select"] span,
+div[data-baseweb="select"] div {
+  color: #111827 !important;
+}
+
+div[data-baseweb="popover"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 14px !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18) !important;
+}
+
+div[data-baseweb="popover"] ul,
+ul[role="listbox"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-radius: 14px !important;
+  padding: 6px !important;
+}
+
+li[role="option"],
+div[role="option"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+}
+
+li[role="option"] *,
+div[role="option"] * {
+  color: #111827 !important;
+}
+
+li[role="option"]:hover,
+div[role="option"]:hover,
+li[aria-selected="true"],
+div[aria-selected="true"] {
+  background-color: #eef2ff !important;
+  color: #4f46e5 !important;
+}
+
+li[aria-selected="true"] *,
+div[aria-selected="true"] * {
+  color: #4f46e5 !important;
+}
+
+/* Password eye button / input addon */
+[data-testid="stTextInput"] button,
+[data-testid="stTextInput"] [role="button"] {
+  background-color: #f9fafb !important;
+  color: #111827 !important;
+  border-radius: 12px !important;
+}
+
+/* Make any BaseWeb menu readable */
+[data-baseweb="menu"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+[data-baseweb="menu"] li,
+[data-baseweb="menu"] div {
+  color: #111827 !important;
+}
+
 </style>
 """,
     unsafe_allow_html=True,

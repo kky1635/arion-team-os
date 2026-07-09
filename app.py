@@ -392,6 +392,47 @@ section[data-testid="stSidebar"] textarea {
   line-height: 1.55;
 }
 
+
+/* ===== Korean Table / Empty State Fix ===== */
+.empty-state-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 6px solid #4f46e5;
+  border-radius: 20px;
+  padding: 20px 22px;
+  margin: 14px 0 24px 0;
+  box-shadow: 0 10px 28px rgba(15,23,42,.04);
+}
+.empty-state-title {
+  color: #111827;
+  font-weight: 950;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+.empty-state-desc {
+  color: #4b5563;
+  line-height: 1.65;
+}
+.admin-section-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  padding: 20px 22px;
+  margin: 18px 0;
+  box-shadow: 0 10px 28px rgba(15,23,42,.04);
+}
+.admin-section-title {
+  font-weight: 950;
+  font-size: 1.22rem;
+  color: #111827;
+  margin-bottom: 6px;
+}
+.admin-section-desc {
+  color: #6b7280;
+  line-height: 1.55;
+  margin-bottom: 12px;
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -643,6 +684,148 @@ def korean_action_view(df: pd.DataFrame) -> pd.DataFrame:
         if c not in view.columns:
             view[c] = ""
     return view[list(cols.keys())].rename(columns=cols)
+
+def empty_state(title: str, desc: str):
+    st.markdown(
+        f"""
+<div class="empty-state-card">
+  <div class="empty-state-title">{title}</div>
+  <div class="empty-state-desc">{desc}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+def admin_section(title: str, desc: str = ""):
+    st.markdown(
+        f"""
+<div class="admin-section-card">
+  <div class="admin-section-title">{title}</div>
+  <div class="admin-section-desc">{desc}</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+def korean_view(df: pd.DataFrame, mapping: dict) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame(columns=list(mapping.values()))
+    view = df.copy()
+    for c in mapping:
+        if c not in view.columns:
+            view[c] = ""
+    return view[list(mapping.keys())].rename(columns=mapping)
+
+def korean_revenue_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "revenue_source": "수익원",
+        "linked_project": "연결 프로젝트",
+        "revenue_type": "유형",
+        "status": "상태",
+        "expected_revenue": "예상 매출",
+        "actual_revenue": "실제 매출",
+        "cost": "비용",
+        "net_profit": "순이익",
+        "required_preparation": "준비물",
+        "risk": "리스크",
+        "next_action": "다음 행동",
+        "priority": "우선순위",
+        "memo": "메모",
+    })
+
+def korean_social_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "campaign_name": "캠페인명",
+        "source_content": "원본 콘텐츠",
+        "linked_project": "연결 프로젝트",
+        "linked_offer": "연결 상품/제안",
+        "channel": "채널",
+        "format": "형식",
+        "hook": "후킹 문구",
+        "status": "상태",
+        "upload_date": "업로드일",
+        "views": "조회수",
+        "saves": "저장",
+        "comments": "댓글",
+        "clicks": "클릭",
+        "inquiries": "문의",
+        "sales": "판매",
+        "next_action": "다음 행동",
+        "memo": "메모",
+    })
+
+def korean_commerce_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "product_name": "상품명",
+        "sales_method": "판매방식",
+        "category": "카테고리",
+        "source": "소싱처",
+        "cost_price": "원가",
+        "expected_price": "예상 판매가",
+        "shipping_fee": "배송비",
+        "expected_margin": "예상 마진",
+        "certification_risk": "인증 리스크",
+        "cs_risk": "CS 리스크",
+        "return_risk": "반품 리스크",
+        "content_potential": "콘텐츠화 가능성",
+        "test_status": "테스트 상태",
+        "linked_content": "연결 콘텐츠",
+        "result": "결과",
+        "next_action": "다음 행동",
+        "memo": "메모",
+    })
+
+def korean_user_view_simple(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "email": "이메일",
+        "name": "이름",
+        "role": "역할",
+        "area": "담당영역",
+        "projects": "프로젝트",
+        "status": "상태",
+        "is_admin": "관리자",
+        "created_at": "가입일",
+        "last_login": "마지막 로그인",
+        "mindset_goal": "목표",
+    })
+
+def korean_blocker_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "date": "날짜",
+        "owner": "담당자",
+        "project": "프로젝트",
+        "blocker": "막힌 내용",
+        "needed_help": "필요한 도움",
+        "urgency": "긴급도",
+        "status": "상태",
+        "founder_decision_required": "대표 결정 필요",
+        "ai_feedback": "AI 피드백",
+        "resolution_memo": "해결 메모",
+    })
+
+def korean_ai_log_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "date": "날짜",
+        "owner": "담당자",
+        "feedback_type": "피드백 유형",
+        "input_summary": "입력 요약",
+        "ai_feedback": "AI 피드백",
+        "created_at": "생성일",
+    })
+
+def korean_message_view(df: pd.DataFrame) -> pd.DataFrame:
+    return korean_view(df, {
+        "created_at": "작성일",
+        "message_type": "유형",
+        "project": "프로젝트",
+        "sender": "보낸 사람",
+        "recipient": "받는 사람",
+        "urgency": "긴급도",
+        "title": "제목",
+        "message": "내용",
+        "status": "상태",
+        "ai_summary": "AI 요약",
+    })
 
 # -----------------------------
 # Auth helpers
@@ -1257,16 +1440,34 @@ with tab["ARION 전체 지도"]:
 
 with tab["수익흐름"]:
     st.subheader("수익흐름")
-    st.dataframe(revenue, use_container_width=True)
+    if revenue.empty:
+        empty_state(
+            "아직 등록된 수익흐름이 없습니다.",
+            "대표가 수익원, 연결 프로젝트, 예상 매출, 다음 행동을 등록하면 팀원들이 현재 사업 방향을 한눈에 이해할 수 있습니다."
+        )
+    else:
+        st.dataframe(korean_revenue_view(revenue), use_container_width=True)
 
 with tab["SNS 마케팅"]:
     st.subheader("SNS 마케팅")
-    st.dataframe(social, use_container_width=True)
+    if social.empty:
+        empty_state(
+            "아직 등록된 SNS 캠페인이 없습니다.",
+            "릴스, 쇼츠, 블로그, 인스타그램, 틱톡 콘텐츠 계획을 등록하면 팀원들이 어떤 콘텐츠를 왜 만드는지 이해할 수 있습니다."
+        )
+    else:
+        st.dataframe(korean_social_view(social), use_container_width=True)
 
 with tab["구매대행/위탁판매"]:
     st.subheader("구매대행/위탁판매")
     st.warning("고위험 상품, 재고 선구매, 무단 크롤링은 피하세요.")
-    st.dataframe(commerce, use_container_width=True)
+    if commerce.empty:
+        empty_state(
+            "아직 테스트 상품이 없습니다.",
+            "상품 후보를 등록하면 원가, 예상 판매가, 마진, 리스크, 콘텐츠화 가능성을 기준으로 테스트할 수 있습니다."
+        )
+    else:
+        st.dataframe(korean_commerce_view(commerce), use_container_width=True)
 
 if is_admin():
     with tab["대표 대시보드"]:
@@ -1303,19 +1504,21 @@ if is_admin():
         c3.metric("완료", today_df["status"].astype(str).eq("done").sum() if not today_df.empty else 0)
         c4.metric("막힘", today_df["status"].astype(str).eq("blocked").sum() if not today_df.empty else 0)
 
-        st.subheader("전체 팀원")
-        st.dataframe(users.drop(columns=["password_hash"], errors="ignore"), use_container_width=True)
+        admin_section("전체 팀원", "가입된 팀원과 상태를 확인합니다.")
+        st.dataframe(korean_user_view_simple(users), use_container_width=True)
 
-        st.subheader("전체 오늘 할 일")
-        edited_actions = st.data_editor(actions, use_container_width=True, num_rows="dynamic", key="editor_admin_all_actions")
-        if st.button("대표: 전체 할 일 저장", key="btn_admin_save_all_actions"):
-            save_table("team_daily_actions", edited_actions)
+        admin_section("전체 오늘 할 일", "팀원들의 전체 업무를 확인합니다. 수정은 고급 편집에서만 합니다.")
+        st.dataframe(korean_action_view(actions), use_container_width=True)
+        with st.expander("전체 할 일 고급 편집"):
+            edited_actions = st.data_editor(actions, use_container_width=True, num_rows="dynamic", key="editor_admin_all_actions")
+            if st.button("대표: 전체 할 일 저장", key="btn_admin_save_all_actions"):
+                save_table("team_daily_actions", edited_actions)
 
-        st.subheader("전체 막힌 일")
-        st.dataframe(blockers, use_container_width=True)
+        admin_section("전체 막힌 일", "팀원들이 막힌 내용을 모아 봅니다.")
+        st.dataframe(korean_blocker_view(blockers), use_container_width=True)
 
-        st.subheader("AI 피드백 로그")
-        st.dataframe(load_table("ai_feedback_logs"), use_container_width=True)
+        admin_section("AI 피드백 로그", "NVIDIA AI가 생성한 피드백 기록입니다.")
+        st.dataframe(korean_ai_log_view(load_table("ai_feedback_logs")), use_container_width=True)
 
 if is_admin():
     with tab["대표 설정"]:
@@ -1469,7 +1672,7 @@ ARION Team OS 메신저 메시지를 업무용으로 요약해줘.
             filtered = filtered[filtered["status"].astype(str) == filter_status]
 
         display_cols = ["created_at","message_type","project","sender","recipient","urgency","title","message","status","ai_summary"]
-        st.dataframe(filtered[display_cols], use_container_width=True)
+        st.dataframe(korean_message_view(filtered), use_container_width=True)
 
         st.markdown("### 메시지 상태 수정")
         editable = st.data_editor(filtered, use_container_width=True, num_rows="dynamic", key="editor_messages_filtered")

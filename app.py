@@ -281,6 +281,68 @@ div[aria-selected="true"] * {
   color: #0c4a6e;
 }
 
+
+/* ===== ARION Admin UI Fix ===== */
+.admin-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 12px 0 22px 0;
+}
+.admin-status-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+.admin-status-label {
+  color: #6b7280;
+  font-size: 0.86rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.admin-status-value {
+  color: #111827;
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+.admin-good { color: #047857 !important; }
+.admin-warn { color: #b45309 !important; }
+.admin-bad { color: #b91c1c !important; }
+.admin-guide {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-left: 6px solid #4f46e5;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin: 14px 0 22px 0;
+}
+.admin-guide-title {
+  font-weight: 950;
+  color: #111827;
+  margin-bottom: 6px;
+}
+.admin-guide-desc {
+  color: #4b5563;
+  line-height: 1.6;
+}
+.pending-card {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  padding: 16px 18px;
+  margin: 10px 0;
+}
+.pending-title {
+  font-weight: 950;
+  color: #9a3412;
+}
+.pending-meta {
+  color: #7c2d12;
+  margin-top: 4px;
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -307,6 +369,102 @@ def card(title: str, body: str):
 """,
         unsafe_allow_html=True,
     )
+
+
+def admin_status_cards():
+    supabase_ok = bool(get_supabase())
+    ai_ok = ai_available()
+    st.markdown(
+        f"""
+<div class="admin-status-grid">
+  <div class="admin-status-card">
+    <div class="admin-status-label">공용 DB</div>
+    <div class="admin-status-value {'admin-good' if supabase_ok else 'admin-bad'}">{'Supabase 연결됨' if supabase_ok else 'Supabase 미연결'}</div>
+  </div>
+  <div class="admin-status-card">
+    <div class="admin-status-label">AI 피드백</div>
+    <div class="admin-status-value {'admin-good' if ai_ok else 'admin-warn'}">{'NVIDIA AI 연결됨' if ai_ok else 'NVIDIA AI 미연결'}</div>
+  </div>
+  <div class="admin-status-card">
+    <div class="admin-status-label">메신저</div>
+    <div class="admin-status-value admin-good">사용 가능</div>
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+def render_admin_guide():
+    st.markdown(
+        """
+<div class="admin-guide">
+  <div class="admin-guide-title">대표가 이 화면에서 해야 할 일</div>
+  <div class="admin-guide-desc">
+    1) 가입 승인 대기 팀원을 확인합니다.<br>
+    2) 실제 팀원이 맞으면 승인합니다.<br>
+    3) 승인된 팀원은 로그인 후 개인 업무, 마인드셋, 완료 보고, 메신저를 사용할 수 있습니다.<br>
+    4) NVIDIA AI 키를 연결하면 마인드셋/완료보고/메신저 피드백이 자동 생성됩니다.
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+def admin_user_view(users_df: pd.DataFrame) -> pd.DataFrame:
+    if users_df.empty:
+        return pd.DataFrame(columns=["이메일", "이름", "역할", "담당영역", "상태", "관리자", "가입일", "마지막 로그인", "목표"])
+    view = users_df.copy()
+    rename = {
+        "email": "이메일",
+        "name": "이름",
+        "role": "역할",
+        "area": "담당영역",
+        "projects": "프로젝트",
+        "status": "상태",
+        "is_admin": "관리자",
+        "created_at": "가입일",
+        "last_login": "마지막 로그인",
+        "mindset_goal": "목표",
+    }
+    for col in rename:
+        if col not in view.columns:
+            view[col] = ""
+    view = view[list(rename.keys())].rename(columns=rename)
+    return view
+
+def render_pending_approvals(users_df: pd.DataFrame):
+    st.markdown("### 가입 승인 대기")
+    pending = users_df[users_df["status"].astype(str).str.lower() == "pending"] if not users_df.empty else pd.DataFrame()
+    if pending.empty:
+        st.success("현재 승인 대기 중인 팀원이 없습니다.")
+        return users_df
+
+    st.warning(f"승인 대기 중인 팀원 {len(pending)}명이 있습니다.")
+    for _, row in pending.iterrows():
+        st.markdown(
+            f"""
+<div class="pending-card">
+  <div class="pending-title">{row.get('name','이름 없음')} / {row.get('role','역할 없음')}</div>
+  <div class="pending-meta">이메일: {row.get('email','')} · 담당영역: {row.get('area','')} · 프로젝트: {row.get('projects','')}</div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+        col1, col2, col3 = st.columns([1,1,4])
+        email = str(row.get("email", ""))
+        with col1:
+            if st.button("승인하기", key=f"approve_{email}"):
+                users_df.loc[users_df["email"].astype(str) == email, "status"] = "active"
+                save_users(users_df)
+                st.success(f"{row.get('name','팀원')}님을 승인했습니다.")
+                st.rerun()
+        with col2:
+            if st.button("거절하기", key=f"reject_{email}"):
+                users_df.loc[users_df["email"].astype(str) == email, "status"] = "rejected"
+                save_users(users_df)
+                st.warning(f"{row.get('name','팀원')}님을 거절했습니다.")
+                st.rerun()
+    return users_df
 
 # -----------------------------
 # Secrets
@@ -1015,25 +1173,39 @@ if is_admin():
 if is_admin():
     with tab["대표 설정"]:
         st.subheader("대표 설정")
-        st.json({
-            "supabase_connected": bool(get_supabase()),
-            "storage": "Supabase" if get_supabase() else "Local CSV fallback",
-            "auth": "invite-code signup + local password hash",
-            "ai": "NVIDIA connected" if ai_available() else "NVIDIA not connected",
-            "nvidia_model": NVIDIA_MODEL,
-            "messenger": "enabled",
-            "do_not_build_yet": ["payment", "banking", "settlement", "unsafe crawling"],
-        })
 
-        if st.button("초기 샘플 데이터 넣기", key="btn_seed_data"):
-            seed_data()
-            st.success("초기 샘플 데이터 확인/삽입 완료")
-            st.rerun()
+        admin_status_cards()
+        render_admin_guide()
 
-        if is_admin():
-            st.markdown("### 관리자: 팀원 관리")
-            editable_users = users.drop(columns=["password_hash"], errors="ignore")
-            st.dataframe(editable_users, use_container_width=True)
+        users = load_table("team_users")
+        users = render_pending_approvals(users)
+
+        st.markdown("---")
+        st.markdown("### 팀원 목록")
+        st.caption("비밀번호 해시는 표시하지 않습니다. 팀원 상태가 active면 로그인 가능합니다.")
+        st.dataframe(admin_user_view(users), use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### 운영 버튼")
+        col_seed, col_refresh = st.columns([1, 1])
+        with col_seed:
+            if st.button("초기 샘플 데이터 넣기", key="admin_seed_data_button"):
+                seed_data()
+                st.success("초기 샘플 데이터 확인/삽입 완료")
+                st.rerun()
+        with col_refresh:
+            if st.button("새로고침", key="admin_refresh_button"):
+                st.rerun()
+
+        st.markdown("---")
+        st.markdown("### 운영 상태 상세")
+        status_df = pd.DataFrame([
+            {"항목": "공용 DB", "상태": "연결됨" if bool(get_supabase()) else "미연결", "설명": "팀원 데이터 저장 위치"},
+            {"항목": "AI 피드백", "상태": "연결됨" if ai_available() else "미연결", "설명": "NVIDIA API 키 연결 여부"},
+            {"항목": "메신저", "상태": "사용 가능", "설명": "팀원 질문/요청 기록"},
+            {"항목": "금지 기능", "상태": "비활성", "설명": "결제/은행/정산/무단 크롤링은 만들지 않음"},
+        ])
+        st.dataframe(status_df, use_container_width=True)
 
 with tab["팀 메신저"]:
     st.subheader("팀 메신저")

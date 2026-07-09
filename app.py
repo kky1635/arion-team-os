@@ -249,6 +249,38 @@ div[aria-selected="true"] * {
   color: #111827 !important;
 }
 
+
+/* ===== ARION Approval / Role UI ===== */
+.approval-box {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin: 14px 0;
+}
+.approval-title {
+  font-size: 1.1rem;
+  font-weight: 950;
+  color: #9a3412;
+  margin-bottom: 6px;
+}
+.approval-desc {
+  color: #7c2d12;
+  line-height: 1.6;
+}
+.quick-messenger {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+  border: 1px solid #bae6fd;
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin: 12px 0;
+}
+.quick-messenger-title {
+  font-size: 1.1rem;
+  font-weight: 950;
+  color: #0c4a6e;
+}
+
 </style>
 """,
     unsafe_allow_html=True,
@@ -542,12 +574,18 @@ if st.session_state.user is None:
             else:
                 user = matched.iloc[0].to_dict()
                 if verify_password(login_pw, user.get("password_hash","")):
-                    user["last_login"] = datetime.now().isoformat(timespec="seconds")
-                    users.loc[users["email"].astype(str).str.lower() == email, "last_login"] = user["last_login"]
-                    save_users(users)
-                    st.session_state.user = user
-                    st.success("로그인 성공")
-                    st.rerun()
+                    account_status = str(user.get("status", "")).lower()
+                    if account_status == "pending":
+                        st.warning("아직 대표 승인 대기 중입니다. 대표가 승인하면 로그인할 수 있습니다.")
+                    elif account_status in ["rejected", "blocked", "inactive"]:
+                        st.error("현재 계정이 승인되지 않았거나 비활성화 상태입니다. 대표에게 문의하세요.")
+                    else:
+                        user["last_login"] = datetime.now().isoformat(timespec="seconds")
+                        users.loc[users["email"].astype(str).str.lower() == email, "last_login"] = user["last_login"]
+                        save_users(users)
+                        st.session_state.user = user
+                        st.success("로그인 성공")
+                        st.rerun()
                 else:
                     st.error("비밀번호가 맞지 않습니다.")
 
@@ -591,7 +629,7 @@ if st.session_state.user is None:
                         "area": area,
                         "projects": projects,
                         "password_hash": make_password_record(pw1),
-                        "status": "active",
+                        "status": "active" if is_first_user or role == "대표" else "pending",
                         "is_admin": "yes" if role == "대표" or is_first_user else "no",
                         "created_at": datetime.now().isoformat(timespec="seconds"),
                         "last_login": "",
@@ -601,9 +639,23 @@ if st.session_state.user is None:
                         "memo": "",
                     }])
                     save_users(pd.concat([users.drop(columns=["_record_id"], errors="ignore"), new_user], ignore_index=True))
-                    st.success("회원가입 완료. 이제 로그인하세요.")
+                    if is_first_user or role == "대표":
+                        st.success("대표 계정 생성 완료. 이제 로그인하세요.")
+                    else:
+                        st.success("회원가입 신청 완료. 대표 승인 후 로그인할 수 있습니다.")
 
-    st.info("대표도 먼저 회원가입하세요. 첫 가입자 또는 역할이 대표인 사용자는 관리자 화면을 볼 수 있습니다.")
+    st.markdown(
+        """
+<div class="approval-box">
+  <div class="approval-title">가입 승인 방식</div>
+  <div class="approval-desc">
+    대표 계정은 먼저 가입 후 관리자 화면을 사용할 수 있습니다.<br>
+    일반 팀원은 회원가입 후 바로 접속되지 않고, 대표가 승인해야 로그인할 수 있습니다.
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
     st.stop()
 
 user = st.session_state.user
@@ -615,6 +667,9 @@ with st.sidebar:
     st.write(f"**역할:** {user.get('role','')}")
     st.write(f"**담당:** {user.get('area','')}")
     st.caption("팀 공용 운영 화면")
+    if not is_admin():
+        st.markdown("#### 빠른 이동")
+        st.info("질문이나 요청은 아래쪽 ‘팀 메신저’ 탭에 남기세요.")
     if ai_available():
         st.success("NVIDIA AI 연결됨")
     else:
@@ -637,22 +692,24 @@ mindsets = load_table("mindset_checkins")
 users = load_table("team_users")
 messages = load_table("team_messages")
 
-tabs = st.tabs([
+tab_names = [
     "내 홈",
     "오늘 마인드셋",
     "내 오늘 할 일",
     "완료 보고",
     "막힌 일",
+    "팀 메신저",
     "ARION 전체 지도",
     "수익흐름",
     "SNS 마케팅",
     "구매대행/위탁판매",
-    "대표 대시보드",
-    "설정",
-    "팀 메신저",
-])
+]
+if is_admin():
+    tab_names += ["대표 대시보드", "대표 설정"]
+tabs = st.tabs(tab_names)
+tab = {name: tabs[i] for i, name in enumerate(tab_names)}
 
-with tabs[0]:
+with tab["내 홈"]:
     today = str(date.today())
     my_name = user.get("name","")
     my_email = user.get("email","")
@@ -677,13 +734,23 @@ with tabs[0]:
         """
     )
 
+    st.markdown(
+        """
+<div class="quick-messenger">
+  <div class="quick-messenger-title">질문/요청은 팀 메신저로 남기세요</div>
+  <p>업무가 막히거나 대표 결정이 필요하면 ‘팀 메신저’ 탭에서 <b>대표에게질문</b> 유형으로 남기면 됩니다.</p>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
     if not my_today.empty:
         st.subheader("내 오늘 할 일")
         st.dataframe(my_today[["project","task","goal","priority","status","next_action"]], use_container_width=True)
     else:
         st.info("아직 오늘 배정된 할 일이 없습니다. '내 오늘 할 일' 탭에서 직접 추가하거나 대표에게 요청하세요.")
 
-with tabs[1]:
+with tab["오늘 마인드셋"]:
     st.subheader("오늘 마인드셋 체크인")
     st.caption("팀원이 일을 시작하기 전에 목표와 상태를 정리하도록 유도하는 화면입니다.")
 
@@ -732,7 +799,7 @@ with tabs[1]:
     mine = mindsets[mindsets["owner_email"].astype(str).str.lower() == user.get("email","")] if not mindsets.empty else pd.DataFrame()
     st.dataframe(mine, use_container_width=True)
 
-with tabs[2]:
+with tab["내 오늘 할 일"]:
     st.subheader("내 오늘 할 일")
     my_name = user.get("name","")
     my_email = user.get("email","")
@@ -788,7 +855,7 @@ with tabs[2]:
         save_table("team_daily_actions", pd.concat([actions.drop(columns=["_record_id"], errors="ignore"), new_row], ignore_index=True))
         st.rerun()
 
-with tabs[3]:
+with tab["완료 보고"]:
     st.subheader("완료 보고")
     with st.form("completion_form"):
         project = st.text_input("프로젝트")
@@ -831,7 +898,7 @@ with tabs[3]:
     mine = reports[reports["owner_email"].astype(str).str.lower() == user.get("email","")] if not reports.empty else pd.DataFrame()
     st.dataframe(mine, use_container_width=True)
 
-with tabs[4]:
+with tab["막힌 일"]:
     st.subheader("막힌 일 / 도움 요청")
     with st.form("blocker_form"):
         project = st.text_input("막힌 프로젝트")
@@ -876,31 +943,53 @@ with tabs[4]:
     mine = blockers[blockers["owner_email"].astype(str).str.lower() == user.get("email","")] if not blockers.empty else pd.DataFrame()
     st.dataframe(mine, use_container_width=True)
 
-with tabs[5]:
+with tab["ARION 전체 지도"]:
     st.subheader("ARION 전체 지도")
     if apps.empty:
         st.info("아직 앱 포트폴리오 데이터가 없습니다. 설정 탭에서 초기 샘플 데이터를 넣으세요.")
     else:
         st.dataframe(apps[["project_name","core_role","revenue_model","next_action","priority"]], use_container_width=True)
 
-with tabs[6]:
+with tab["수익흐름"]:
     st.subheader("수익흐름")
     st.dataframe(revenue, use_container_width=True)
 
-with tabs[7]:
+with tab["SNS 마케팅"]:
     st.subheader("SNS 마케팅")
     st.dataframe(social, use_container_width=True)
 
-with tabs[8]:
+with tab["구매대행/위탁판매"]:
     st.subheader("구매대행/위탁판매")
     st.warning("고위험 상품, 재고 선구매, 무단 크롤링은 피하세요.")
     st.dataframe(commerce, use_container_width=True)
 
-with tabs[9]:
-    if not is_admin():
-        st.warning("대표/관리자만 볼 수 있는 화면입니다.")
-    else:
+if is_admin():
+    with tab["대표 대시보드"]:
         st.subheader("대표 대시보드")
+
+        st.markdown("### 가입 승인 대기")
+        pending_users = users[users["status"].astype(str).str.lower() == "pending"] if not users.empty else pd.DataFrame()
+        if pending_users.empty:
+            st.success("현재 승인 대기 중인 팀원이 없습니다.")
+        else:
+            st.dataframe(pending_users.drop(columns=["password_hash"], errors="ignore"), use_container_width=True)
+            pending_emails = pending_users["email"].astype(str).tolist()
+            selected_pending = st.selectbox("승인/거절할 팀원 이메일", pending_emails)
+            col_approve, col_reject = st.columns(2)
+            with col_approve:
+                if st.button("선택 팀원 승인"):
+                    users.loc[users["email"].astype(str) == selected_pending, "status"] = "active"
+                    save_users(users)
+                    st.success("팀원을 승인했습니다.")
+                    st.rerun()
+            with col_reject:
+                if st.button("선택 팀원 거절"):
+                    users.loc[users["email"].astype(str) == selected_pending, "status"] = "rejected"
+                    save_users(users)
+                    st.warning("팀원 가입을 거절했습니다.")
+                    st.rerun()
+
+        st.markdown("---")
         today = str(date.today())
         today_df = actions[actions["date"].astype(str) == today] if not actions.empty else pd.DataFrame()
         c1, c2, c3, c4 = st.columns(4)
@@ -923,30 +1012,30 @@ with tabs[9]:
         st.subheader("AI 피드백 로그")
         st.dataframe(load_table("ai_feedback_logs"), use_container_width=True)
 
-with tabs[10]:
-    st.subheader("설정")
-    st.json({
-        "supabase_connected": bool(get_supabase()),
-        "storage": "Supabase" if get_supabase() else "Local CSV fallback",
-        "auth": "invite-code signup + local password hash",
-        "ai": "NVIDIA connected" if ai_available() else "NVIDIA not connected",
-        "nvidia_model": NVIDIA_MODEL,
-        "messenger": "enabled",
-        "do_not_build_yet": ["payment", "banking", "settlement", "unsafe crawling"],
-    })
+if is_admin():
+    with tab["대표 설정"]:
+        st.subheader("대표 설정")
+        st.json({
+            "supabase_connected": bool(get_supabase()),
+            "storage": "Supabase" if get_supabase() else "Local CSV fallback",
+            "auth": "invite-code signup + local password hash",
+            "ai": "NVIDIA connected" if ai_available() else "NVIDIA not connected",
+            "nvidia_model": NVIDIA_MODEL,
+            "messenger": "enabled",
+            "do_not_build_yet": ["payment", "banking", "settlement", "unsafe crawling"],
+        })
 
-    if st.button("초기 샘플 데이터 넣기"):
-        seed_data()
-        st.success("초기 샘플 데이터 확인/삽입 완료")
-        st.rerun()
+        if st.button("초기 샘플 데이터 넣기"):
+            seed_data()
+            st.success("초기 샘플 데이터 확인/삽입 완료")
+            st.rerun()
 
-    if is_admin():
-        st.markdown("### 관리자: 팀원 관리")
-        editable_users = users.drop(columns=["password_hash"], errors="ignore")
-        st.dataframe(editable_users, use_container_width=True)
+        if is_admin():
+            st.markdown("### 관리자: 팀원 관리")
+            editable_users = users.drop(columns=["password_hash"], errors="ignore")
+            st.dataframe(editable_users, use_container_width=True)
 
-
-with tabs[11]:
+with tab["팀 메신저"]:
     st.subheader("팀 메신저")
     st.caption("팀원 간 질문, 대표 요청, 프로젝트별 대화를 한 곳에 남깁니다. 실시간 채팅보다는 업무 기록형 메신저입니다.")
 

@@ -808,8 +808,8 @@ with tab["내 오늘 할 일"]:
         (actions["owner_email"].astype(str).str.lower() == my_email)
     ] if not actions.empty else pd.DataFrame(columns=SCHEMAS["team_daily_actions"])
 
-    edited = st.data_editor(view, use_container_width=True, num_rows="dynamic")
-    if st.button("내 할 일 저장"):
+    edited = st.data_editor(view, use_container_width=True, num_rows="dynamic", key="editor_my_tasks_view")
+    if st.button("내 할 일 저장", key="btn_save_my_tasks"):
         # replace only my rows
         base = actions[
             ~(
@@ -977,13 +977,13 @@ if is_admin():
             selected_pending = st.selectbox("승인/거절할 팀원 이메일", pending_emails)
             col_approve, col_reject = st.columns(2)
             with col_approve:
-                if st.button("선택 팀원 승인"):
+                if st.button("선택 팀원 승인", key="btn_approve_user"):
                     users.loc[users["email"].astype(str) == selected_pending, "status"] = "active"
                     save_users(users)
                     st.success("팀원을 승인했습니다.")
                     st.rerun()
             with col_reject:
-                if st.button("선택 팀원 거절"):
+                if st.button("선택 팀원 거절", key="btn_reject_user"):
                     users.loc[users["email"].astype(str) == selected_pending, "status"] = "rejected"
                     save_users(users)
                     st.warning("팀원 가입을 거절했습니다.")
@@ -1002,8 +1002,8 @@ if is_admin():
         st.dataframe(users.drop(columns=["password_hash"], errors="ignore"), use_container_width=True)
 
         st.subheader("전체 오늘 할 일")
-        edited_actions = st.data_editor(actions, use_container_width=True, num_rows="dynamic")
-        if st.button("대표: 전체 할 일 저장"):
+        edited_actions = st.data_editor(actions, use_container_width=True, num_rows="dynamic", key="editor_admin_all_actions")
+        if st.button("대표: 전체 할 일 저장", key="btn_admin_save_all_actions"):
             save_table("team_daily_actions", edited_actions)
 
         st.subheader("전체 막힌 일")
@@ -1025,7 +1025,7 @@ if is_admin():
             "do_not_build_yet": ["payment", "banking", "settlement", "unsafe crawling"],
         })
 
-        if st.button("초기 샘플 데이터 넣기"):
+        if st.button("초기 샘플 데이터 넣기", key="btn_seed_data"):
             seed_data()
             st.success("초기 샘플 데이터 확인/삽입 완료")
             st.rerun()
@@ -1153,8 +1153,8 @@ ARION Team OS 메신저 메시지를 업무용으로 요약해줘.
         st.dataframe(filtered[display_cols], use_container_width=True)
 
         st.markdown("### 메시지 상태 수정")
-        editable = st.data_editor(filtered, use_container_width=True, num_rows="dynamic")
-        if st.button("메시지 상태 저장"):
+        editable = st.data_editor(filtered, use_container_width=True, num_rows="dynamic", key="editor_messages_filtered")
+        if st.button("메시지 상태 저장", key="btn_save_message_status"):
             if is_admin():
                 # admin can save all edited visible messages by replacing matching created_at records
                 base = messages[~messages["created_at"].astype(str).isin(editable["created_at"].astype(str).tolist())] if not messages.empty else pd.DataFrame(columns=SCHEMAS["team_messages"])

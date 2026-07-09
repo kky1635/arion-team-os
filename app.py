@@ -21,41 +21,241 @@ st.set_page_config(page_title="ARION Team OS", page_icon="👥", layout="wide")
 # -----------------------------
 st.markdown(
     """
+
 <style>
-.stApp { background:#f6f7fb; color:#111827; }
-.block-container { max-width:1500px; padding-top:1.5rem; padding-bottom:4rem; }
-[data-testid="stMetric"] {
-  background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:18px;
-  box-shadow:0 8px 22px rgba(15,23,42,.05);
+:root {
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --primary: #4f46e5;
+  --primary-dark: #3730a3;
+  --primary-soft: #eef2ff;
 }
-.stTabs [data-baseweb="tab-list"] {
-  gap:8px; background:#fff; border:1px solid #e5e7eb; border-radius:18px; padding:8px;
-  box-shadow:0 8px 22px rgba(15,23,42,.04); overflow-x:auto;
+
+.stApp {
+  background: var(--bg) !important;
+  color: var(--text) !important;
 }
-.stTabs [data-baseweb="tab"] {
-  background:#f9fafb; border-radius:12px; padding:10px 14px; color:#374151; font-weight:750;
+
+.block-container {
+  max-width: 1480px !important;
+  padding-top: 1.35rem !important;
+  padding-bottom: 4rem !important;
 }
-.stTabs [aria-selected="true"] { background:#eef2ff !important; color:#5b5ce2 !important; }
-[data-testid="stDataFrame"], [data-testid="stDataEditor"] {
-  border-radius:18px; overflow:hidden; border:1px solid #e5e7eb; background:#fff;
+
+header[data-testid="stHeader"] {
+  background: transparent !important;
 }
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text) !important;
+  letter-spacing: -0.03em;
+}
+
+p, span, div, label {
+  color: var(--text);
+}
+
+/* Main header */
 .arion-header {
-  background:linear-gradient(135deg,#ffffff 0%,#eef2ff 100%);
-  border:1px solid #e0e7ff; border-radius:24px; padding:26px 28px; margin-bottom:22px;
-  box-shadow:0 12px 34px rgba(79,70,229,.08);
+  background: linear-gradient(135deg, #ffffff 0%, #eef2ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 28px;
+  padding: 30px 34px;
+  margin-bottom: 24px;
+  box-shadow: 0 16px 45px rgba(79,70,229,.08);
 }
-.arion-title { font-size:2.15rem; font-weight:900; letter-spacing:-.05em; color:#111827; margin-bottom:8px; }
-.arion-subtitle { color:#4b5563; font-size:1.02rem; line-height:1.65; margin:0; }
+
+.arion-title {
+  font-size: 2.15rem;
+  line-height: 1.15;
+  font-weight: 950;
+  color: #111827;
+  letter-spacing: -0.055em;
+  margin-bottom: 10px;
+}
+
+.arion-subtitle {
+  color: #4b5563;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Cards */
 .arion-card {
-  background:#fff; border:1px solid #e5e7eb; border-radius:20px; padding:20px 22px; margin:14px 0;
-  box-shadow:0 8px 22px rgba(15,23,42,.04);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px 24px;
+  margin: 14px 0;
+  box-shadow: 0 10px 28px rgba(15,23,42,.045);
 }
-.arion-card h3 { margin-top:0; }
-.badge { display:inline-block; border-radius:999px; padding:4px 10px; font-weight:800; font-size:.78rem; }
+
+.arion-card h3 {
+  margin-top: 0;
+  color: #111827 !important;
+}
+
+/* Login helper */
+.login-guide {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  padding: 20px 22px;
+  margin: 12px 0 18px 0;
+  box-shadow: 0 10px 28px rgba(15,23,42,.045);
+}
+
+.login-guide-title {
+  font-size: 1.15rem;
+  font-weight: 950;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+.login-guide-desc {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* Inputs */
+[data-testid="stTextInput"] label,
+[data-testid="stSelectbox"] label,
+[data-testid="stNumberInput"] label,
+[data-testid="stTextArea"] label {
+  color: #111827 !important;
+  font-weight: 850 !important;
+  font-size: .95rem !important;
+}
+
+input, textarea {
+  background: #ffffff !important;
+  color: #111827 !important;
+  border-radius: 14px !important;
+  border: 1px solid #d1d5db !important;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 2px rgba(79,70,229,.12) !important;
+}
+
+/* Buttons */
+.stButton > button,
+button[kind="primary"],
+button[data-testid="baseButton-primary"] {
+  min-height: 42px !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--primary) !important;
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  padding: .55rem 1.15rem !important;
+  box-shadow: 0 8px 18px rgba(79,70,229,.20);
+}
+
+.stButton > button:hover,
+button[kind="primary"]:hover,
+button[data-testid="baseButton-primary"]:hover {
+  background: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+  color: #ffffff !important;
+}
+
+.stButton > button *,
+button[kind="primary"] *,
+button[data-testid="baseButton-primary"] * {
+  color: #ffffff !important;
+}
+
+/* Form submit buttons */
+[data-testid="stFormSubmitButton"] button {
+  min-height: 42px !important;
+  border-radius: 14px !important;
+  border: 1px solid var(--primary) !important;
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+}
+
+[data-testid="stFormSubmitButton"] button * {
+  color: #ffffff !important;
+}
+
+/* Metrics */
+[data-testid="stMetric"] {
+  background: #ffffff !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 20px !important;
+  padding: 18px !important;
+  box-shadow: 0 10px 28px rgba(15,23,42,.045);
+}
+
+[data-testid="stMetricLabel"] {
+  color: var(--muted) !important;
+  font-weight: 800 !important;
+}
+
+[data-testid="stMetricValue"] {
+  color: #111827 !important;
+  font-size: 1.65rem !important;
+  font-weight: 950 !important;
+}
+
+/* Tabs */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px;
+  box-shadow: 0 10px 28px rgba(15,23,42,.04);
+  overflow-x: auto;
+}
+
+.stTabs [data-baseweb="tab"] {
+  background: #f9fafb;
+  border-radius: 13px;
+  padding: 10px 14px;
+  color: #374151;
+  font-weight: 850;
+}
+
+.stTabs [aria-selected="true"] {
+  background: var(--primary-soft) !important;
+  color: var(--primary) !important;
+}
+
+/* Tables */
+[data-testid="stDataFrame"], [data-testid="stDataEditor"] {
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border) !important;
+  background: #ffffff !important;
+  box-shadow: 0 10px 28px rgba(15,23,42,.04);
+}
+
+/* Alerts */
+div[data-testid="stAlert"] {
+  border-radius: 18px !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Status badges */
+.badge { display:inline-block; border-radius:999px; padding:4px 10px; font-weight:900; font-size:.78rem; }
 .high { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
 .medium { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
 .low { background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; }
+
+/* Make dark theme leftovers readable */
+section[data-testid="stSidebar"] {
+  background: #ffffff !important;
+}
 </style>
+
 """,
     unsafe_allow_html=True,
 )
@@ -222,10 +422,26 @@ if "authenticated" not in st.session_state:
 
 if not st.session_state.authenticated:
     header("👥 ARION Team OS", "팀원이 링크로 접속해서 오늘 할 일, 수익흐름, 앱 포트폴리오, 막힌 일을 함께 확인하는 공용 운영 OS")
+    st.markdown(
+        """
+<div class="login-guide">
+  <div class="login-guide-title">팀 공용 비밀번호로 입장</div>
+  <div class="login-guide-desc">
+    팀원에게 공유한 비밀번호를 입력하세요. 비밀번호는 Streamlit Cloud의 Secrets에서 <b>TEAM_PASSWORD</b> 값을 바꾸면 언제든 변경할 수 있습니다.
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
     if TEAM_PASSWORD == "change-me":
         st.warning("현재 기본 비밀번호 `change-me` 상태입니다. 배포 전 Streamlit Secrets에서 TEAM_PASSWORD를 반드시 바꾸세요.")
-    password = st.text_input("팀 공용 비밀번호", type="password")
-    if st.button("입장"):
+    password = st.text_input("팀 공용 비밀번호", type="password", placeholder="비밀번호 입력")
+    col_login, col_help = st.columns([1, 5])
+    with col_login:
+        login_clicked = st.button("입장하기", type="primary")
+    with col_help:
+        st.caption("비밀번호를 바꾼 뒤에는 앱을 새로고침하면 새 비밀번호가 적용됩니다.")
+    if login_clicked:
         if password == TEAM_PASSWORD:
             st.session_state.authenticated = True
             st.rerun()
@@ -234,6 +450,13 @@ if not st.session_state.authenticated:
     st.stop()
 
 header("👥 ARION Team OS", "팀 공용 링크 버전: 오늘 할 일, 담당자, 수익흐름, 앱 포트폴리오, SNS 실행을 한 곳에서 공유합니다.")
+
+with st.sidebar:
+    st.markdown("### ARION Team OS")
+    st.caption("팀 공용 운영 화면")
+    if st.button("로그아웃"):
+        st.session_state.authenticated = False
+        st.rerun()
 
 if not get_supabase():
     st.warning("Supabase가 연결되지 않았습니다. 지금은 로컬 CSV로 작동합니다. 팀 공용 링크로 쓰려면 Streamlit Secrets에 SUPABASE_URL / SUPABASE_SERVICE_KEY를 넣어야 합니다.")

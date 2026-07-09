@@ -226,6 +226,7 @@ SCHEMAS: Dict[str, List[str]] = {
     "team_daily_actions": ["date","owner","owner_email","area","project","task","goal","revenue_link","priority","status","estimated_minutes","actual_result","blocker","help_request","next_action","founder_review","ai_feedback","memo"],
     "mindset_checkins": ["date","owner","owner_email","energy","focus","today_commitment","worry","support_needed","ai_feedback","created_at"],
     "ai_feedback_logs": ["date","owner","owner_email","feedback_type","input_summary","ai_feedback","created_at"],
+    "team_messages": ["created_at","sender","sender_email","message_type","project","recipient","recipient_email","urgency","title","message","status","ai_summary","reply_to","memo"],
     "app_portfolio": ["project_name","type","status","core_role","revenue_model","connected_sns","current_metric","next_action","priority","memo"],
     "revenue_streams": ["revenue_source","linked_project","revenue_type","status","expected_revenue","actual_revenue","cost","net_profit","required_preparation","risk","next_action","priority","memo"],
     "social_marketing": ["campaign_name","source_content","linked_project","linked_offer","channel","format","hook","status","upload_date","views","saves","comments","clicks","inquiries","sales","next_action","memo"],
@@ -559,6 +560,7 @@ reports = load_table("completion_reports")
 weekly = load_table("weekly_team_goals")
 mindsets = load_table("mindset_checkins")
 users = load_table("team_users")
+messages = load_table("team_messages")
 
 tabs = st.tabs([
     "내 홈",
@@ -572,6 +574,7 @@ tabs = st.tabs([
     "구매대행/위탁판매",
     "대표 대시보드",
     "설정",
+    "팀 메신저",
 ])
 
 with tabs[0]:
@@ -853,6 +856,7 @@ with tabs[10]:
         "auth": "invite-code signup + local password hash",
         "ai": "NVIDIA connected" if ai_available() else "NVIDIA not connected",
         "nvidia_model": NVIDIA_MODEL,
+        "messenger": "enabled",
         "do_not_build_yet": ["payment", "banking", "settlement", "unsafe crawling"],
     })
 
@@ -865,3 +869,139 @@ with tabs[10]:
         st.markdown("### 관리자: 팀원 관리")
         editable_users = users.drop(columns=["password_hash"], errors="ignore")
         st.dataframe(editable_users, use_container_width=True)
+
+
+with tabs[11]:
+    st.subheader("팀 메신저")
+    st.caption("팀원 간 질문, 대표 요청, 프로젝트별 대화를 한 곳에 남깁니다. 실시간 채팅보다는 업무 기록형 메신저입니다.")
+
+    my_email = user.get("email", "")
+    my_name = user.get("name", "")
+
+    msg_view_options = ["내가 볼 메시지", "전체 메시지"]
+    view_mode = st.radio("보기", msg_view_options, horizontal=True)
+
+    if messages.empty:
+        visible_messages = pd.DataFrame(columns=SCHEMAS["team_messages"])
+    else:
+        if view_mode == "전체 메시지" and is_admin():
+            visible_messages = messages.copy()
+        else:
+            visible_messages = messages[
+                (messages["message_type"].astype(str).isin(["전체공지", "프로젝트방"])) |
+                (messages["sender_email"].astype(str).str.lower() == my_email) |
+                (messages["recipient_email"].astype(str).str.lower() == my_email) |
+                (messages["recipient"].astype(str) == my_name)
+            ].copy()
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("표시 메시지", len(visible_messages))
+    c2.metric("긴급", visible_messages["urgency"].astype(str).eq("high").sum() if not visible_messages.empty else 0)
+    c3.metric("미처리", visible_messages["status"].astype(str).isin(["open","unread"]).sum() if not visible_messages.empty else 0)
+    c4.metric("내가 보낸 메시지", visible_messages["sender_email"].astype(str).str.lower().eq(my_email).sum() if not visible_messages.empty else 0)
+
+    st.markdown("### 메시지 보내기")
+    with st.form("send_message_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            message_type = st.selectbox("메시지 유형", ["전체공지", "프로젝트방", "1:1메시지", "대표에게질문"])
+            project = st.text_input("프로젝트/방", placeholder="예: AETHER, Seller OS, 런닝스타")
+            urgency = st.selectbox("긴급도", ["medium", "high", "low"])
+        with col2:
+            # recipients from users table
+            if not users.empty:
+                recipient_names = [""] + users["name"].dropna().astype(str).unique().tolist()
+            else:
+                recipient_names = [""]
+            recipient = st.selectbox("받는 사람", recipient_names)
+            recipient_email = ""
+            if recipient and not users.empty:
+                match = users[users["name"].astype(str) == recipient]
+                if not match.empty:
+                    recipient_email = str(match.iloc[0].get("email", ""))
+            title = st.text_input("제목", placeholder="예: 오늘 숏폼 방향 질문")
+        message = st.text_area("내용", placeholder="질문, 요청, 공유할 내용을 적어주세요.")
+        use_ai_summary = st.checkbox("NVIDIA AI로 메시지 요약/다음 행동 만들기", value=ai_available())
+        send = st.form_submit_button("메시지 보내기")
+
+    if send:
+        if not title and not message:
+            st.error("제목 또는 내용을 입력하세요.")
+        else:
+            ai_summary = ""
+            if use_ai_summary:
+                prompt = f"""
+ARION Team OS 메신저 메시지를 업무용으로 요약해줘.
+
+보낸 사람: {my_name}
+역할: {user.get('role')}
+메시지 유형: {message_type}
+프로젝트: {project}
+받는 사람: {recipient}
+긴급도: {urgency}
+제목: {title}
+내용: {message}
+
+다음 형식으로 짧게 정리해:
+1. 핵심 요약
+2. 필요한 결정
+3. 다음 행동 3개
+"""
+                ai_summary = call_nvidia_ai(prompt)
+                log_ai_feedback(my_name, my_email, "message_summary", prompt, ai_summary)
+
+            row = pd.DataFrame([{
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "sender": my_name,
+                "sender_email": my_email,
+                "message_type": message_type,
+                "project": project,
+                "recipient": recipient,
+                "recipient_email": recipient_email,
+                "urgency": urgency,
+                "title": title,
+                "message": message,
+                "status": "open",
+                "ai_summary": ai_summary,
+                "reply_to": "",
+                "memo": "",
+            }])
+            save_table("team_messages", pd.concat([messages.drop(columns=["_record_id"], errors="ignore"), row], ignore_index=True))
+            st.success("메시지를 보냈습니다.")
+            if ai_summary:
+                st.markdown("### AI 요약")
+                st.write(ai_summary)
+            st.rerun()
+
+    st.markdown("### 메시지함")
+    if visible_messages.empty:
+        st.info("아직 표시할 메시지가 없습니다.")
+    else:
+        filter_project = st.selectbox("프로젝트 필터", ["전체"] + sorted([x for x in visible_messages["project"].dropna().astype(str).unique().tolist() if x]))
+        filter_status = st.selectbox("상태 필터", ["전체","open","unread","done","closed"])
+        filtered = visible_messages.copy()
+        if filter_project != "전체":
+            filtered = filtered[filtered["project"].astype(str) == filter_project]
+        if filter_status != "전체":
+            filtered = filtered[filtered["status"].astype(str) == filter_status]
+
+        display_cols = ["created_at","message_type","project","sender","recipient","urgency","title","message","status","ai_summary"]
+        st.dataframe(filtered[display_cols], use_container_width=True)
+
+        st.markdown("### 메시지 상태 수정")
+        editable = st.data_editor(filtered, use_container_width=True, num_rows="dynamic")
+        if st.button("메시지 상태 저장"):
+            if is_admin():
+                # admin can save all edited visible messages by replacing matching created_at records
+                base = messages[~messages["created_at"].astype(str).isin(editable["created_at"].astype(str).tolist())] if not messages.empty else pd.DataFrame(columns=SCHEMAS["team_messages"])
+                save_table("team_messages", pd.concat([base.drop(columns=["_record_id"], errors="ignore"), editable.drop(columns=["_record_id"], errors="ignore")], ignore_index=True))
+            else:
+                # non-admin can save messages they sent or received
+                allowed_ids = editable[
+                    (editable["sender_email"].astype(str).str.lower() == my_email) |
+                    (editable["recipient_email"].astype(str).str.lower() == my_email) |
+                    (editable["recipient"].astype(str) == my_name)
+                ]["created_at"].astype(str).tolist()
+                base = messages[~messages["created_at"].astype(str).isin(allowed_ids)] if not messages.empty else pd.DataFrame(columns=SCHEMAS["team_messages"])
+                allowed_edit = editable[editable["created_at"].astype(str).isin(allowed_ids)]
+                save_table("team_messages", pd.concat([base.drop(columns=["_record_id"], errors="ignore"), allowed_edit.drop(columns=["_record_id"], errors="ignore")], ignore_index=True))
